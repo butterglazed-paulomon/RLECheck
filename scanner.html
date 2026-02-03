@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLE Attendance Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        .btn-check { @apply px-3 py-1 text-sm border rounded hover:bg-opacity-80 transition; }
+        .selected-yes { @apply bg-green-500 text-white border-green-600; }
+        .selected-inc { @apply bg-orange-400 text-white border-orange-500; }
+        .selected-no { @apply bg-red-500 text-white border-red-600; }
+        
+        /* Active Mode Styles */
+        .mode-active-in { @apply bg-blue-600 text-white border-blue-600; }
+        .mode-active-out { @apply bg-green-600 text-white border-green-600; }
+        .mode-inactive { @apply bg-white text-gray-500 border-gray-200 hover:bg-gray-50; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+
+    <div id="loader" class="text-center mt-20">
+        <p class="text-xl font-bold text-gray-600">Loading Student Database...</p>
+    </div>
+
+    <div id="scanner-ui" class="hidden max-w-md mx-auto">
+        
+        <div class="flex gap-2 mb-4">
+            <button onclick="setMode('IN')" id="btn-mode-in" class="flex-1 py-3 rounded-lg font-bold border-2 transition mode-active-in">
+                TIME IN (Checklist)
+            </button>
+            <button onclick="setMode('OUT')" id="btn-mode-out" class="flex-1 py-3 rounded-lg font-bold border-2 transition mode-inactive">
+                TIME OUT
+            </button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-4">
+            <div id="reader" class="w-full"></div>
+            <div class="p-3 bg-gray-50 border-t text-center text-xs text-gray-500">
+                Point camera at Student ID Barcode
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-lg">
+            <p class="text-xs font-bold text-gray-400 uppercase mb-2">Manual Entry</p>
+            <div class="flex gap-2">
+                <input type="text" id="manual-id" placeholder="Enter Student Number" 
+                       class="flex-1 p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono uppercase">
+                <button onclick="handleManual()" class="bg-gray-800 text-white px-6 rounded-lg font-bold hover:bg-gray-700">
+                    GO
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="checklist-ui" class="hidden max-w-md mx-auto mt-4 bg-white rounded-xl shadow-lg p-6">
+        <h2 id="student-name" class="text-xl font-bold text-blue-800">Student Name</h2>
+        <p id="student-id" class="text-sm text-gray-500 mb-4">ID: 00000</p>
+        
+        <div class="bg-blue-50 p-3 rounded-lg mb-4 flex justify-between items-center">
+            <span class="font-bold text-blue-900">Current Score:</span>
+            <span id="total-score" class="text-2xl font-bold text-blue-600">0</span>
+        </div>
+
+        <form id="checklist-form" class="space-y-6">
+            <div>
+                <h3 class="font-bold text-gray-700 border-b pb-1 mb-2">I. Decorum</h3>
+                <div id="decorum-items" class="space-y-3"></div>
+            </div>
+
+            <div>
+                <h3 class="font-bold text-gray-700 border-b pb-1 mb-2">II. Paraphernalia</h3>
+                <div id="para-items" class="space-y-3"></div>
+            </div>
+
+            <div class="flex gap-2 pt-4">
+                <button type="button" onclick="resetScan()" class="w-1/3 bg-gray-300 py-3 rounded font-bold">Cancel</button>
+                <button type="submit" id="submit-btn" class="w-2/3 bg-blue-600 text-white py-3 rounded font-bold">Submit Log</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // CONFIGURATION
+        // REPLACE THIS WITH YOUR ACTUAL DEPLOYED GOOGLE SCRIPT URL
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxJiU5SIlZgPvUWMl4iIEEj-P7v5tVAWQ3jErqJ29N3SCLQpdc2d6_XBujq5OxhtZJDJg/exec"; 
+        
+        // DATA
+        const decorumList = ["Haircut / Bun", "Clean Nails", "Proper Uniform", "Nameplate"];
+        const paraList = ["Watch w/ Second Hand", "Stethoscope", "Thermometer", "BP Apparatus", "Tickler/Notebook"];
+        
+        let studentsDB = [];
+        let currentStudent = null;
+        let checklistData = {}; 
+        let appMode = "IN"; // Default mode
+
+        // 1. INITIALIZE APP
+        window.onload = async () => {
+            try {
+                const res = await fetch(GAS_URL);
+                studentsDB = await res.json();
+                
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('scanner-ui').classList.remove('hidden');
+                startScanner();
+            } catch (e) {
+                alert("Failed to load database. Check URL.");
+            }
+            renderChecklist();
+        };
+
+        // 2. MODE SWITCHING
+        window.setMode = (mode) => {
+            appMode = mode;
+            const btnIn = document.getElementById('btn-mode-in');
+            const btnOut = document.getElementById('btn-mode-out');
+
+            if (mode === 'IN') {
+                btnIn.className = "flex-1 py-3 rounded-lg font-bold border-2 transition mode-active-in";
+                btnOut.className = "flex-1 py-3 rounded-lg font-bold border-2 transition mode-inactive";
+            } else {
+                btnIn.className = "flex-1 py-3 rounded-lg font-bold border-2 transition mode-inactive";
+                btnOut.className = "flex-1 py-3 rounded-lg font-bold border-2 transition mode-active-out";
+            }
+        };
+
+        // 3. SCANNER LOGIC (Updated for Barcodes)
+        function startScanner() {
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 300, height: 150 }, // Wider box for barcodes
+                aspectRatio: 1.0,
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.QR_CODE
+                ]
+            };
+
+            const html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
+            html5QrcodeScanner.render(onScanSuccess, (err) => {});
+        }
+
+        // 4. MANUAL ENTRY LOGIC
+        window.handleManual = () => {
+            const input = document.getElementById('manual-id');
+            const id = input.value.trim().toUpperCase(); // Normalize input
+            if(id) onScanSuccess(id);
+            input.value = ""; // Clear
+        };
+        
+        // Enter key support
+        document.getElementById('manual-id').addEventListener("keypress", (e) => {
+            if(e.key === "Enter") window.handleManual();
+        });
+
+        // 5. SUCCESS HANDLER (Handles both Scan & Manual)
+        async function onScanSuccess(decodedText) {
+            // Find student (loose match to allow for slight barcode variations if needed)
+            const student = studentsDB.find(s => s.id == decodedText); 
+            
+            if (!student) {
+                alert(`Student ID "${decodedText}" not found!`);
+                return;
+            }
+
+            if (appMode === 'IN') {
+                // Open Checklist
+                document.getElementById('scanner-ui').classList.add('hidden');
+                document.getElementById('checklist-ui').classList.remove('hidden');
+                
+                currentStudent = student;
+                document.getElementById('student-name').innerText = student.name;
+                document.getElementById('student-id').innerText = student.id;
+            } else {
+                // Immediate Time Out
+                if(confirm(`Log Time-OUT for ${student.name}?`)) {
+                    await sendData({
+                        action: "attendance",
+                        studentId: student.id,
+                        type: "Time-Out",
+                        totalScore: 0,
+                        details: []
+                    });
+                    alert("Time-Out Logged Successfully!");
+                }
+            }
+        }
+
+        // 6. CHECKLIST RENDERER
+        function renderChecklist() {
+            const createItem = (name, cat) => {
+                const id = name.replace(/\s/g, '');
+                checklistData[id] = { name, category: cat, score: 0, status: 'No' }; 
+                
+                return `
+                <div class="flex justify-between items-center text-sm">
+                    <span>${name}</span>
+                    <div class="flex gap-1">
+                        <button type="button" onclick="setScore('${id}', 5, 'Yes', this)" class="btn-check border-green-500 text-green-600">Yes</button>
+                        <button type="button" onclick="setScore('${id}', 3, 'Inc', this)" class="btn-check border-orange-400 text-orange-400">Inc</button>
+                        <button type="button" onclick="setScore('${id}', 0, 'No', this)" class="btn-check border-red-500 text-red-600 bg-red-500 text-white">No</button>
+                    </div>
+                </div>`;
+            };
+
+            document.getElementById('decorum-items').innerHTML = decorumList.map(i => createItem(i, 'Decorum')).join('');
+            document.getElementById('para-items').innerHTML = paraList.map(i => createItem(i, 'Para')).join('');
+            updateTotal();
+        }
+
+        window.setScore = (id, points, status, btn) => {
+            checklistData[id].score = points;
+            checklistData[id].status = status;
+            
+            const parent = btn.parentElement;
+            Array.from(parent.children).forEach(c => {
+                c.className = "btn-check " + (c.innerText === "Yes" ? "border-green-500 text-green-600" : 
+                                              c.innerText === "Inc" ? "border-orange-400 text-orange-400" : 
+                                              "border-red-500 text-red-600");
+            });
+            
+            if(status === 'Yes') btn.className = "btn-check selected-yes";
+            if(status === 'Inc') btn.className = "btn-check selected-inc";
+            if(status === 'No') btn.className = "btn-check selected-no";
+
+            updateTotal();
+        }
+
+        function updateTotal() {
+            const total = Object.values(checklistData).reduce((sum, item) => sum + item.score, 0);
+            document.getElementById('total-score').innerText = total;
+        }
+
+        // 7. SUBMIT FORM
+        document.getElementById('checklist-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "Saving...";
+            
+            await sendData({
+                action: "attendance",
+                studentId: currentStudent.id,
+                type: "Time-In",
+                totalScore: parseInt(document.getElementById('total-score').innerText),
+                details: Object.values(checklistData)
+            });
+
+            alert("Attendance Logged!");
+            location.reload(); 
+        });
+
+        // Helper to send data
+        async function sendData(payload) {
+            await fetch(GAS_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+        
+        window.resetScan = () => location.reload();
+    </script>
+</body>
+</html>
