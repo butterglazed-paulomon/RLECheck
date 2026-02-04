@@ -8,17 +8,23 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
-        .btn-check { @apply px-3 py-2 text-sm font-medium border rounded-lg hover:bg-opacity-80 transition shadow-sm; }
+        /* Custom Radio Button Styling */
+        .radio-label {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        /* When the radio input inside is checked, style the parent label */
+        input:checked + div {
+            border-color: currentColor;
+            background-color: currentColor;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
         
-        /* Updated Checklist Colors */
-        .selected-yes { @apply bg-green-500 text-white border-green-600 ring-2 ring-green-200; }
-        .selected-inc { @apply bg-orange-400 text-white border-orange-500 ring-2 ring-orange-200; }
-        .selected-no { @apply bg-red-500 text-white border-red-600 ring-2 ring-red-200; }
-        
-        /* Active Mode Styles (Updated for Theme) */
-        .mode-active-in { @apply bg-pink-600 text-white border-pink-600 shadow-md transform scale-105; }
-        .mode-active-out { @apply bg-green-600 text-white border-green-600 shadow-md transform scale-105; }
-        .mode-inactive { @apply bg-white text-gray-500 border-gray-200 hover:bg-gray-50; }
+        /* Specific Colors for outcomes when checked */
+        .opt-yes input:checked + div { color: #22c55e; /* Green-500 */ background-color: #22c55e; color: white; }
+        .opt-inc input:checked + div { color: #fb923c; /* Orange-400 */ background-color: #fb923c; color: white; }
+        .opt-no  input:checked + div { color: #ef4444; /* Red-500 */ background-color: #ef4444; color: white; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 flex flex-col items-center">
@@ -36,11 +42,11 @@
 
     <div id="scanner-ui" class="hidden w-full max-w-md">
         
-        <div class="flex gap-3 mb-6">
-            <button onclick="setMode('IN')" id="btn-mode-in" class="flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-active-in flex items-center justify-center gap-2">
+        <div class="flex gap-3 mb-6 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
+            <button onclick="setMode('IN')" id="btn-mode-in" class="flex-1 py-3 rounded-xl font-bold border transition duration-200 flex items-center justify-center gap-2 bg-pink-600 text-white border-pink-600 shadow-md">
                 <i class="fa-solid fa-clipboard-check"></i> TIME IN
             </button>
-            <button onclick="setMode('OUT')" id="btn-mode-out" class="flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-inactive flex items-center justify-center gap-2">
+            <button onclick="setMode('OUT')" id="btn-mode-out" class="flex-1 py-3 rounded-xl font-bold border transition duration-200 flex items-center justify-center gap-2 bg-white text-gray-400 border-transparent hover:bg-gray-50">
                 <i class="fa-solid fa-person-walking-arrow-right"></i> TIME OUT
             </button>
         </div>
@@ -71,7 +77,7 @@
 
     <div id="checklist-ui" class="hidden w-full max-w-md mt-4 bg-white rounded-2xl shadow-xl p-6 border-t-8 border-pink-500 relative">
         
-        <div class="mb-6">
+        <div class="mb-6 border-b pb-4">
             <h2 id="student-name" class="text-2xl font-bold text-gray-800 leading-tight">Student Name</h2>
             <p class="text-sm text-gray-500 flex items-center gap-2 mt-1">
                 <i class="fa-solid fa-id-badge text-pink-400"></i>
@@ -84,23 +90,25 @@
             <span id="total-score" class="text-3xl font-black text-pink-600">0</span>
         </div>
 
-        <form id="checklist-form" class="space-y-6">
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <h3 class="font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-user-tie text-pink-500"></i> I. Decorum
+        <form id="checklist-form" class="space-y-8">
+            <div>
+                <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="bg-pink-100 text-pink-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-user-tie"></i></span>
+                    Decorum
                 </h3>
-                <div id="decorum-items" class="space-y-3"></div>
+                <div id="decorum-items" class="space-y-4"></div>
             </div>
 
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <h3 class="font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-stethoscope text-green-500"></i> II. Paraphernalia
+            <div>
+                <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="bg-green-100 text-green-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-stethoscope"></i></span>
+                    Paraphernalia
                 </h3>
-                <div id="para-items" class="space-y-3"></div>
+                <div id="para-items" class="space-y-4"></div>
             </div>
 
-            <div class="flex gap-3 pt-4">
-                <button type="button" onclick="resetScan()" class="w-1/3 bg-gray-200 text-gray-600 py-3.5 rounded-xl font-bold hover:bg-gray-300 transition">
+            <div class="flex gap-3 pt-4 border-t mt-4">
+                <button type="button" onclick="resetScan()" class="w-1/3 bg-gray-100 text-gray-600 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition">
                     Cancel
                 </button>
                 <button type="submit" id="submit-btn" class="w-2/3 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white py-3.5 rounded-xl font-bold shadow-lg transition transform hover:-translate-y-0.5">
@@ -136,20 +144,23 @@
             renderChecklist();
         };
 
-        // UPDATED: Theme Classes in JS
+        // 1. FIXED MODE SWITCHING LOGIC
         window.setMode = (mode) => {
             appMode = mode;
             const btnIn = document.getElementById('btn-mode-in');
             const btnOut = document.getElementById('btn-mode-out');
 
+            // Define styles as strings to avoid conflicts
+            const activePink = "flex-1 py-3 rounded-xl font-bold border transition duration-200 flex items-center justify-center gap-2 bg-pink-600 text-white border-pink-600 shadow-md transform scale-105";
+            const activeGreen = "flex-1 py-3 rounded-xl font-bold border transition duration-200 flex items-center justify-center gap-2 bg-green-600 text-white border-green-600 shadow-md transform scale-105";
+            const inactive = "flex-1 py-3 rounded-xl font-bold border transition duration-200 flex items-center justify-center gap-2 bg-white text-gray-400 border-transparent hover:bg-gray-50";
+
             if (mode === 'IN') {
-                // Active Pink, Inactive Gray
-                btnIn.className = "flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-active-in flex items-center justify-center gap-2";
-                btnOut.className = "flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-inactive flex items-center justify-center gap-2";
+                btnIn.className = activePink;
+                btnOut.className = inactive;
             } else {
-                // Inactive Gray, Active Green
-                btnIn.className = "flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-inactive flex items-center justify-center gap-2";
-                btnOut.className = "flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-active-out flex items-center justify-center gap-2";
+                btnIn.className = inactive;
+                btnOut.className = activeGreen;
             }
         };
 
@@ -208,18 +219,31 @@
             }
         }
 
+        // 2. NEW CHECKLIST RENDERER (RADIO STYLE)
         function renderChecklist() {
             const createItem = (name, cat) => {
                 const id = name.replace(/\s/g, '');
                 checklistData[id] = { name, category: cat, score: 0, status: 'No' }; 
                 
                 return `
-                <div class="flex justify-between items-center text-sm py-1">
-                    <span class="font-medium text-gray-700 w-1/3 leading-tight">${name}</span>
-                    <div class="flex gap-1 w-2/3 justify-end">
-                        <button type="button" onclick="setScore('${id}', 5, 'Yes', this)" class="btn-check text-green-600 border-green-200 hover:bg-green-50">Yes</button>
-                        <button type="button" onclick="setScore('${id}', 3, 'Inc', this)" class="btn-check text-orange-500 border-orange-200 hover:bg-orange-50">Inc</button>
-                        <button type="button" onclick="setScore('${id}', 0, 'No', this)" class="btn-check bg-red-500 text-white border-red-600 ring-2 ring-red-200">No</button>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50">
+                    <span class="font-medium text-gray-700 mb-2 sm:mb-0">${name}</span>
+                    
+                    <div class="flex bg-gray-100 p-1 rounded-lg gap-1">
+                        <label class="opt-yes flex-1 cursor-pointer">
+                            <input type="radio" name="${id}" value="5" class="hidden" onchange="updateRadio('${id}', 5, 'Yes')">
+                            <div class="px-4 py-2 rounded-md text-sm font-bold text-center text-gray-500 hover:bg-white transition">YES</div>
+                        </label>
+
+                        <label class="opt-inc flex-1 cursor-pointer">
+                            <input type="radio" name="${id}" value="3" class="hidden" onchange="updateRadio('${id}', 3, 'Inc')">
+                            <div class="px-4 py-2 rounded-md text-sm font-bold text-center text-gray-500 hover:bg-white transition">INC</div>
+                        </label>
+
+                        <label class="opt-no flex-1 cursor-pointer">
+                            <input type="radio" name="${id}" value="0" class="hidden" checked onchange="updateRadio('${id}', 0, 'No')">
+                            <div class="px-4 py-2 rounded-md text-sm font-bold text-center text-gray-500 hover:bg-white transition">NO</div>
+                        </label>
                     </div>
                 </div>`;
             };
@@ -229,23 +253,9 @@
             updateTotal();
         }
 
-        window.setScore = (id, points, status, btn) => {
+        window.updateRadio = (id, points, status) => {
             checklistData[id].score = points;
             checklistData[id].status = status;
-            
-            const parent = btn.parentElement;
-            Array.from(parent.children).forEach(c => {
-                // Reset to default style
-                if(c.innerText === "Yes") c.className = "btn-check text-green-600 border-green-200 hover:bg-green-50";
-                else if(c.innerText === "Inc") c.className = "btn-check text-orange-500 border-orange-200 hover:bg-orange-50";
-                else c.className = "btn-check text-red-500 border-red-200 hover:bg-red-50";
-            });
-            
-            // Apply Active Style
-            if(status === 'Yes') btn.className = "btn-check selected-yes";
-            if(status === 'Inc') btn.className = "btn-check selected-inc";
-            if(status === 'No') btn.className = "btn-check selected-no";
-
             updateTotal();
         }
 
@@ -257,7 +267,6 @@
         document.getElementById('checklist-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submit-btn');
-            const originalText = btn.innerText;
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...';
             btn.disabled = true;
             
