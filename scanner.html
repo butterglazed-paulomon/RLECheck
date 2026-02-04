@@ -6,84 +6,112 @@
     <title>RLE Attendance Scanner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
-        .btn-check { @apply px-3 py-1 text-sm border rounded hover:bg-opacity-80 transition; }
-        .selected-yes { @apply bg-green-500 text-white border-green-600; }
-        .selected-inc { @apply bg-orange-400 text-white border-orange-500; }
-        .selected-no { @apply bg-red-500 text-white border-red-600; }
+        .btn-check { @apply px-3 py-2 text-sm font-medium border rounded-lg hover:bg-opacity-80 transition shadow-sm; }
         
-        /* Active Mode Styles */
-        .mode-active-in { @apply bg-blue-600 text-white border-blue-600; }
-        .mode-active-out { @apply bg-green-600 text-white border-green-600; }
+        /* Updated Checklist Colors */
+        .selected-yes { @apply bg-green-500 text-white border-green-600 ring-2 ring-green-200; }
+        .selected-inc { @apply bg-orange-400 text-white border-orange-500 ring-2 ring-orange-200; }
+        .selected-no { @apply bg-red-500 text-white border-red-600 ring-2 ring-red-200; }
+        
+        /* Active Mode Styles (Updated for Theme) */
+        .mode-active-in { @apply bg-pink-600 text-white border-pink-600 shadow-md transform scale-105; }
+        .mode-active-out { @apply bg-green-600 text-white border-green-600 shadow-md transform scale-105; }
         .mode-inactive { @apply bg-white text-gray-500 border-gray-200 hover:bg-gray-50; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
+<body class="bg-gray-50 min-h-screen p-4 flex flex-col items-center">
+
+    <div class="w-full max-w-md mb-4">
+        <a href="index.html" class="text-gray-500 hover:text-pink-600 font-medium transition flex items-center gap-2">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
 
     <div id="loader" class="text-center mt-20">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
         <p class="text-xl font-bold text-gray-600">Loading Student Database...</p>
     </div>
 
-    <div id="scanner-ui" class="hidden max-w-md mx-auto">
+    <div id="scanner-ui" class="hidden w-full max-w-md">
         
-        <div class="flex gap-2 mb-4">
-            <button onclick="setMode('IN')" id="btn-mode-in" class="flex-1 py-3 rounded-lg font-bold border-2 transition mode-active-in">
-                TIME IN (Checklist)
+        <div class="flex gap-3 mb-6">
+            <button onclick="setMode('IN')" id="btn-mode-in" class="flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-active-in flex items-center justify-center gap-2">
+                <i class="fa-solid fa-clipboard-check"></i> TIME IN
             </button>
-            <button onclick="setMode('OUT')" id="btn-mode-out" class="flex-1 py-3 rounded-lg font-bold border-2 transition mode-inactive">
-                TIME OUT
+            <button onclick="setMode('OUT')" id="btn-mode-out" class="flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-inactive flex items-center justify-center gap-2">
+                <i class="fa-solid fa-person-walking-arrow-right"></i> TIME OUT
             </button>
         </div>
 
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-4">
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6 border-4 border-white ring-1 ring-gray-200 relative">
             <div id="reader" class="w-full"></div>
-            <div class="p-3 bg-gray-50 border-t text-center text-xs text-gray-500">
+            <div class="absolute top-4 right-4 bg-white/80 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-600 shadow-sm">
+                <i class="fa-solid fa-camera text-pink-500"></i> LIVE
+            </div>
+            <div class="p-3 bg-gray-50 border-t text-center text-xs text-gray-500 font-medium uppercase tracking-wide">
                 Point camera at Student ID Barcode
             </div>
         </div>
 
-        <div class="bg-white p-4 rounded-xl shadow-lg">
-            <p class="text-xs font-bold text-gray-400 uppercase mb-2">Manual Entry</p>
+        <div class="bg-white p-5 rounded-2xl shadow-md border-l-4 border-pink-400">
+            <p class="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider">
+                <i class="fa-solid fa-keyboard mr-1"></i> Manual Entry
+            </p>
             <div class="flex gap-2">
-                <input type="text" id="manual-id" placeholder="Enter Student Number" 
-                       class="flex-1 p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono uppercase">
-                <button onclick="handleManual()" class="bg-gray-800 text-white px-6 rounded-lg font-bold hover:bg-gray-700">
+                <input type="text" id="manual-id" placeholder="ENTER ID NO." 
+                       class="flex-1 p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-pink-500 font-mono uppercase bg-gray-50 focus:bg-white transition">
+                <button onclick="handleManual()" class="bg-gray-800 text-white px-6 rounded-lg font-bold hover:bg-gray-700 shadow-lg transition transform active:scale-95">
                     GO
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="checklist-ui" class="hidden max-w-md mx-auto mt-4 bg-white rounded-xl shadow-lg p-6">
-        <h2 id="student-name" class="text-xl font-bold text-blue-800">Student Name</h2>
-        <p id="student-id" class="text-sm text-gray-500 mb-4">ID: 00000</p>
+    <div id="checklist-ui" class="hidden w-full max-w-md mt-4 bg-white rounded-2xl shadow-xl p-6 border-t-8 border-pink-500 relative">
         
-        <div class="bg-blue-50 p-3 rounded-lg mb-4 flex justify-between items-center">
-            <span class="font-bold text-blue-900">Current Score:</span>
-            <span id="total-score" class="text-2xl font-bold text-blue-600">0</span>
+        <div class="mb-6">
+            <h2 id="student-name" class="text-2xl font-bold text-gray-800 leading-tight">Student Name</h2>
+            <p class="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                <i class="fa-solid fa-id-badge text-pink-400"></i>
+                <span id="student-id" class="font-mono">ID: 00000</span>
+            </p>
+        </div>
+        
+        <div class="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl mb-6 flex justify-between items-center border border-pink-200">
+            <span class="font-bold text-pink-900 uppercase text-sm tracking-wide">Current Score</span>
+            <span id="total-score" class="text-3xl font-black text-pink-600">0</span>
         </div>
 
         <form id="checklist-form" class="space-y-6">
-            <div>
-                <h3 class="font-bold text-gray-700 border-b pb-1 mb-2">I. Decorum</h3>
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <h3 class="font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-user-tie text-pink-500"></i> I. Decorum
+                </h3>
                 <div id="decorum-items" class="space-y-3"></div>
             </div>
 
-            <div>
-                <h3 class="font-bold text-gray-700 border-b pb-1 mb-2">II. Paraphernalia</h3>
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <h3 class="font-bold text-gray-700 border-b border-gray-200 pb-2 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-stethoscope text-green-500"></i> II. Paraphernalia
+                </h3>
                 <div id="para-items" class="space-y-3"></div>
             </div>
 
-            <div class="flex gap-2 pt-4">
-                <button type="button" onclick="resetScan()" class="w-1/3 bg-gray-300 py-3 rounded font-bold">Cancel</button>
-                <button type="submit" id="submit-btn" class="w-2/3 bg-blue-600 text-white py-3 rounded font-bold">Submit Log</button>
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="resetScan()" class="w-1/3 bg-gray-200 text-gray-600 py-3.5 rounded-xl font-bold hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button type="submit" id="submit-btn" class="w-2/3 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white py-3.5 rounded-xl font-bold shadow-lg transition transform hover:-translate-y-0.5">
+                    Submit Log
+                </button>
             </div>
         </form>
     </div>
 
     <script>
         // CONFIGURATION
-        // REPLACE THIS WITH YOUR ACTUAL DEPLOYED GOOGLE SCRIPT URL
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxJiU5SIlZgPvUWMl4iIEEj-P7v5tVAWQ3jErqJ29N3SCLQpdc2d6_XBujq5OxhtZJDJg/exec"; 
         
         // DATA
@@ -93,14 +121,12 @@
         let studentsDB = [];
         let currentStudent = null;
         let checklistData = {}; 
-        let appMode = "IN"; // Default mode
+        let appMode = "IN"; 
 
-        // 1. INITIALIZE APP
         window.onload = async () => {
             try {
                 const res = await fetch(GAS_URL);
                 studentsDB = await res.json();
-                
                 document.getElementById('loader').classList.add('hidden');
                 document.getElementById('scanner-ui').classList.remove('hidden');
                 startScanner();
@@ -110,26 +136,27 @@
             renderChecklist();
         };
 
-        // 2. MODE SWITCHING
+        // UPDATED: Theme Classes in JS
         window.setMode = (mode) => {
             appMode = mode;
             const btnIn = document.getElementById('btn-mode-in');
             const btnOut = document.getElementById('btn-mode-out');
 
             if (mode === 'IN') {
-                btnIn.className = "flex-1 py-3 rounded-lg font-bold border-2 transition mode-active-in";
-                btnOut.className = "flex-1 py-3 rounded-lg font-bold border-2 transition mode-inactive";
+                // Active Pink, Inactive Gray
+                btnIn.className = "flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-active-in flex items-center justify-center gap-2";
+                btnOut.className = "flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-inactive flex items-center justify-center gap-2";
             } else {
-                btnIn.className = "flex-1 py-3 rounded-lg font-bold border-2 transition mode-inactive";
-                btnOut.className = "flex-1 py-3 rounded-lg font-bold border-2 transition mode-active-out";
+                // Inactive Gray, Active Green
+                btnIn.className = "flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-inactive flex items-center justify-center gap-2";
+                btnOut.className = "flex-1 py-4 rounded-xl font-bold border-2 transition duration-200 mode-active-out flex items-center justify-center gap-2";
             }
         };
 
-        // 3. SCANNER LOGIC (Updated for Barcodes)
         function startScanner() {
             const config = { 
                 fps: 10, 
-                qrbox: { width: 300, height: 150 }, // Wider box for barcodes
+                qrbox: { width: 300, height: 150 },
                 aspectRatio: 1.0,
                 formatsToSupport: [
                     Html5QrcodeSupportedFormats.CODE_128,
@@ -138,36 +165,29 @@
                     Html5QrcodeSupportedFormats.QR_CODE
                 ]
             };
-
             const html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
             html5QrcodeScanner.render(onScanSuccess, (err) => {});
         }
 
-        // 4. MANUAL ENTRY LOGIC
         window.handleManual = () => {
             const input = document.getElementById('manual-id');
-            const id = input.value.trim().toUpperCase(); // Normalize input
+            const id = input.value.trim().toUpperCase();
             if(id) onScanSuccess(id);
-            input.value = ""; // Clear
+            input.value = "";
         };
         
-        // Enter key support
         document.getElementById('manual-id').addEventListener("keypress", (e) => {
             if(e.key === "Enter") window.handleManual();
         });
 
-        // 5. SUCCESS HANDLER (Handles both Scan & Manual)
         async function onScanSuccess(decodedText) {
-            // Find student (loose match to allow for slight barcode variations if needed)
             const student = studentsDB.find(s => s.id == decodedText); 
-            
             if (!student) {
                 alert(`Student ID "${decodedText}" not found!`);
                 return;
             }
 
             if (appMode === 'IN') {
-                // Open Checklist
                 document.getElementById('scanner-ui').classList.add('hidden');
                 document.getElementById('checklist-ui').classList.remove('hidden');
                 
@@ -175,7 +195,6 @@
                 document.getElementById('student-name').innerText = student.name;
                 document.getElementById('student-id').innerText = student.id;
             } else {
-                // Immediate Time Out
                 if(confirm(`Log Time-OUT for ${student.name}?`)) {
                     await sendData({
                         action: "attendance",
@@ -189,19 +208,18 @@
             }
         }
 
-        // 6. CHECKLIST RENDERER
         function renderChecklist() {
             const createItem = (name, cat) => {
                 const id = name.replace(/\s/g, '');
                 checklistData[id] = { name, category: cat, score: 0, status: 'No' }; 
                 
                 return `
-                <div class="flex justify-between items-center text-sm">
-                    <span>${name}</span>
-                    <div class="flex gap-1">
-                        <button type="button" onclick="setScore('${id}', 5, 'Yes', this)" class="btn-check border-green-500 text-green-600">Yes</button>
-                        <button type="button" onclick="setScore('${id}', 3, 'Inc', this)" class="btn-check border-orange-400 text-orange-400">Inc</button>
-                        <button type="button" onclick="setScore('${id}', 0, 'No', this)" class="btn-check border-red-500 text-red-600 bg-red-500 text-white">No</button>
+                <div class="flex justify-between items-center text-sm py-1">
+                    <span class="font-medium text-gray-700 w-1/3 leading-tight">${name}</span>
+                    <div class="flex gap-1 w-2/3 justify-end">
+                        <button type="button" onclick="setScore('${id}', 5, 'Yes', this)" class="btn-check text-green-600 border-green-200 hover:bg-green-50">Yes</button>
+                        <button type="button" onclick="setScore('${id}', 3, 'Inc', this)" class="btn-check text-orange-500 border-orange-200 hover:bg-orange-50">Inc</button>
+                        <button type="button" onclick="setScore('${id}', 0, 'No', this)" class="btn-check bg-red-500 text-white border-red-600 ring-2 ring-red-200">No</button>
                     </div>
                 </div>`;
             };
@@ -217,11 +235,13 @@
             
             const parent = btn.parentElement;
             Array.from(parent.children).forEach(c => {
-                c.className = "btn-check " + (c.innerText === "Yes" ? "border-green-500 text-green-600" : 
-                                              c.innerText === "Inc" ? "border-orange-400 text-orange-400" : 
-                                              "border-red-500 text-red-600");
+                // Reset to default style
+                if(c.innerText === "Yes") c.className = "btn-check text-green-600 border-green-200 hover:bg-green-50";
+                else if(c.innerText === "Inc") c.className = "btn-check text-orange-500 border-orange-200 hover:bg-orange-50";
+                else c.className = "btn-check text-red-500 border-red-200 hover:bg-red-50";
             });
             
+            // Apply Active Style
             if(status === 'Yes') btn.className = "btn-check selected-yes";
             if(status === 'Inc') btn.className = "btn-check selected-inc";
             if(status === 'No') btn.className = "btn-check selected-no";
@@ -234,11 +254,12 @@
             document.getElementById('total-score').innerText = total;
         }
 
-        // 7. SUBMIT FORM
         document.getElementById('checklist-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submit-btn');
-            btn.innerText = "Saving...";
+            const originalText = btn.innerText;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...';
+            btn.disabled = true;
             
             await sendData({
                 action: "attendance",
@@ -252,7 +273,6 @@
             location.reload(); 
         });
 
-        // Helper to send data
         async function sendData(payload) {
             await fetch(GAS_URL, {
                 method: 'POST',
